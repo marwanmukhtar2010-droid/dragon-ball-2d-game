@@ -1,0 +1,2420 @@
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Super Z-Championship - Anime Fighting Game</title>
+<style>
+  :root {
+    --primary: #ff4500;
+    --primary-glow: #ff7700;
+    --gold: #ffd700;
+    --blue: #00e5ff;
+    --dark: #0a0a14;
+    --dark-panel: rgba(12, 14, 28, 0.92);
+    --font: 'Impact', 'Segoe UI Black', -apple-system, sans-serif;
+  }
+  * {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    margin: 0;
+    padding: 0;
+  }
+  body, html {
+    width: 100%;
+    height: 100%;
+    background: #000;
+    color: #fff;
+    font-family: var(--font);
+    overflow: hidden;
+  }
+  #game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #000;
+  }
+  canvas#gameCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+  }
+
+  /* UI Layer Overlays */
+  .overlay-screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: radial-gradient(circle at center, rgba(20,25,50,0.85) 0%, rgba(5,5,12,0.98) 100%);
+    z-index: 50;
+    transition: opacity 0.3s ease;
+  }
+  .overlay-screen.hidden {
+    display: none !important;
+  }
+
+  /* Anime style typography */
+  .anime-title {
+    font-size: clamp(2.5rem, 6vw, 5.5rem);
+    text-transform: uppercase;
+    font-style: italic;
+    letter-spacing: 3px;
+    color: #fff;
+    text-shadow: 0 0 10px var(--primary), 0 0 30px var(--primary-glow), 4px 4px 0 #000;
+    text-align: center;
+    line-height: 1.1;
+    margin-bottom: 25px;
+    animation: pulseTitle 2s infinite alternate;
+  }
+  .anime-subtitle {
+    font-size: clamp(1rem, 2vw, 1.4rem);
+    color: var(--gold);
+    letter-spacing: 6px;
+    text-shadow: 2px 2px 0 #000;
+    margin-bottom: 35px;
+  }
+  @keyframes pulseTitle {
+    0% { transform: scale(1); filter: drop-shadow(0 0 5px var(--primary)); }
+    100% { transform: scale(1.02); filter: drop-shadow(0 0 20px var(--gold)); }
+  }
+
+  /* Buttons */
+  .btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: min(340px, 85vw);
+  }
+  .anime-btn {
+    background: linear-gradient(135deg, #ff5100 0%, #ff1100 100%);
+    border: 2px solid var(--gold);
+    color: #fff;
+    padding: 14px 24px;
+    font-size: 1.2rem;
+    font-family: var(--font);
+    font-style: italic;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    cursor: pointer;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(255, 69, 0, 0.4), inset 0 0 8px rgba(255,255,255,0.4);
+    transition: all 0.15s ease;
+    text-shadow: 2px 2px 0 #000;
+    position: relative;
+    overflow: hidden;
+  }
+  .anime-btn:hover {
+    transform: translateY(-2px) scale(1.03);
+    background: linear-gradient(135deg, #ff7700 0%, #ff3300 100%);
+    box-shadow: 0 6px 25px rgba(255, 215, 0, 0.7);
+  }
+  .anime-btn:active {
+    transform: translateY(1px) scale(0.98);
+  }
+  .anime-btn.secondary {
+    background: linear-gradient(135deg, #2a2e4a 0%, #151829 100%);
+    border-color: #5d6796;
+  }
+
+  /* Character Select Screen */
+  .select-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 90%;
+    max-width: 1100px;
+    height: 90vh;
+    justify-content: space-between;
+  }
+  .char-roster {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 12px;
+    width: 100%;
+    margin-top: 15px;
+  }
+  @media (max-width: 768px) {
+    .char-roster {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+  .char-card {
+    background: var(--dark-panel);
+    border: 2px solid #3d456a;
+    border-radius: 8px;
+    padding: 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: all 0.2s;
+  }
+  .char-card.selected-p1 {
+    border-color: var(--blue);
+    box-shadow: 0 0 15px var(--blue);
+    transform: scale(1.05);
+  }
+  .char-card.selected-p2 {
+    border-color: var(--primary);
+    box-shadow: 0 0 15px var(--primary);
+  }
+  .char-card .avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-size: cover;
+    margin-bottom: 6px;
+    border: 2px solid #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+  }
+  .char-card .name {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    color: #fff;
+    letter-spacing: 1px;
+    text-align: center;
+  }
+
+  .preview-area {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin: 15px 0;
+    align-items: center;
+  }
+  .fighter-preview-box {
+    width: 45%;
+    background: rgba(10, 15, 30, 0.7);
+    border: 2px solid #444c77;
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    gap: 15px;
+  }
+  .fighter-stats {
+    flex: 1;
+    font-size: 0.85rem;
+    font-family: sans-serif;
+  }
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+  }
+  .stat-bar {
+    width: 60%;
+    height: 8px;
+    background: #222;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .stat-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff9900, #ff1100);
+  }
+
+  /* Stage Select */
+  .stage-carousel {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 10px;
+    width: 100%;
+    justify-content: center;
+  }
+  .stage-thumb {
+    width: 130px;
+    height: 70px;
+    border: 2px solid #555;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 0.75rem;
+    background-size: cover;
+    text-shadow: 1px 1px 2px #000;
+  }
+  .stage-thumb.selected {
+    border-color: var(--gold);
+    box-shadow: 0 0 15px var(--gold);
+  }
+
+  /* In-Game HUD overlay */
+  #hud-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+  }
+  .hud-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 20px 30px;
+  }
+  .fighter-hud {
+    width: 40%;
+  }
+  .hud-name-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+  }
+  .fighter-hud.p2 .hud-name-bar {
+    flex-direction: row-reverse;
+  }
+  .hud-name {
+    font-size: 1.4rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-shadow: 2px 2px 0 #000;
+  }
+  .hud-transform-name {
+    font-size: 0.85rem;
+    color: var(--gold);
+    letter-spacing: 1px;
+  }
+  .bar-frame {
+    width: 100%;
+    height: 24px;
+    background: #111;
+    border: 2px solid #fff;
+    transform: skew(-15deg);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 10px rgba(0,0,0,0.8);
+  }
+  .bar-lag {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: #ff2a00;
+    transition: width 0.4s ease-out;
+  }
+  .hp-bar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: linear-gradient(180deg, #00ff66 0%, #009933 100%);
+    transition: width 0.1s linear;
+  }
+  .fighter-hud.p1 .hp-bar, .fighter-hud.p1 .bar-lag { left: 0; }
+  .fighter-hud.p2 .hp-bar, .fighter-hud.p2 .bar-lag { right: 0; }
+
+  .ki-bar-frame {
+    width: 80%;
+    height: 14px;
+    background: #090a14;
+    border: 1.5px solid #aaa;
+    transform: skew(-15deg);
+    margin-top: 6px;
+    position: relative;
+    overflow: hidden;
+  }
+  .fighter-hud.p2 .ki-bar-frame { margin-left: auto; }
+  .ki-fill {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, #00bfff, #0066ff);
+    box-shadow: 0 0 8px #00ffff;
+  }
+  .fighter-hud.p1 .ki-fill { left: 0; }
+  .fighter-hud.p2 .ki-fill { right: 0; }
+
+  .timer-box {
+    background: rgba(0,0,0,0.8);
+    border: 3px solid var(--gold);
+    width: 70px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.2rem;
+    color: #fff;
+    border-radius: 8px;
+    text-shadow: 0 0 10px var(--gold);
+    box-shadow: 0 0 15px rgba(255,215,0,0.4);
+  }
+
+  /* Combos & Announcement */
+  .combo-display {
+    position: absolute;
+    top: 130px;
+    font-size: 2.5rem;
+    font-style: italic;
+    text-shadow: 3px 3px 0 #000, 0 0 15px var(--primary);
+    display: none;
+    animation: popCombo 0.15s ease-out;
+  }
+  .combo-display.p1 { left: 50px; color: var(--gold); }
+  .combo-display.p2 { right: 50px; color: #ff3344; }
+  @keyframes popCombo {
+    0% { transform: scale(1.4); }
+    100% { transform: scale(1); }
+  }
+
+  .announcement-box {
+    position: absolute;
+    top: 35%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: clamp(3rem, 7vw, 6rem);
+    text-transform: uppercase;
+    font-style: italic;
+    color: #fff;
+    text-shadow: 0 0 20px var(--primary-glow), 5px 5px 0 #000;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .announcement-box.show {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+
+  /* Touch Controls */
+  #touch-controls {
+    position: absolute;
+    bottom: 15px;
+    left: 0;
+    right: 0;
+    height: 190px;
+    pointer-events: none;
+    display: none;
+    z-index: 40;
+  }
+  .touch-stick-zone {
+    position: absolute;
+    left: 20px;
+    bottom: 15px;
+    width: 160px;
+    height: 160px;
+    pointer-events: auto;
+    background: rgba(255,255,255,0.08);
+    border: 2px dashed rgba(255,255,255,0.3);
+    border-radius: 50%;
+  }
+  .touch-stick-thumb {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #ff7700, #ff2200);
+    box-shadow: 0 0 10px #ff5500;
+  }
+  .touch-btn-cluster {
+    position: absolute;
+    right: 15px;
+    bottom: 10px;
+    width: 250px;
+    height: 175px;
+    pointer-events: auto;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .t-btn {
+    background: rgba(20, 20, 35, 0.85);
+    border: 2px solid rgba(255,255,255,0.6);
+    border-radius: 50%;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+    active:scale(0.9);
+  }
+  .t-btn.atk { background: radial-gradient(circle, #ff5500, #aa1100); border-color: #ffd700; }
+  .t-btn.spec { background: radial-gradient(circle, #00bbff, #0044aa); border-color: #00ffff; }
+  .t-btn.ult { background: radial-gradient(circle, #ff00ea, #880077); border-color: #ff99ff; grid-column: span 2; border-radius: 20px; font-size: 1rem; }
+  .t-btn.chg { background: radial-gradient(circle, #ffe600, #cc7700); border-color: #fff; color: #000; }
+
+  /* Settings, Help & Training Controls */
+  .modal-panel {
+    background: var(--dark-panel);
+    border: 2px solid var(--gold);
+    border-radius: 12px;
+    padding: 25px;
+    width: min(580px, 90vw);
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 0 30px rgba(0,0,0,0.9);
+  }
+  .setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #2d3352;
+  }
+  .key-badge {
+    background: #1e2238;
+    border: 1px solid #727fa8;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: var(--gold);
+  }
+</style>
+</head>
+<body>
+
+<div id="game-container">
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- HUD Layer -->
+  <div id="hud-layer" style="display: none;">
+    <div class="hud-top">
+      <!-- Player 1 -->
+      <div class="fighter-hud p1">
+        <div class="hud-name-bar">
+          <span class="hud-name" id="p1-name">GOKU</span>
+          <span class="hud-transform-name" id="p1-form">BASE</span>
+        </div>
+        <div class="bar-frame">
+          <div class="bar-lag" id="p1-hp-lag" style="width: 100%;"></div>
+          <div class="hp-bar" id="p1-hp" style="width: 100%;"></div>
+        </div>
+        <div class="ki-bar-frame">
+          <div class="ki-fill" id="p1-ki" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <!-- Round Timer & Info -->
+      <div style="display:flex; flex-direction:column; align-items:center;">
+        <div class="timer-box" id="match-timer">99</div>
+        <div style="font-size: 0.8rem; color: var(--gold); margin-top: 4px;" id="round-indicator">ROUND 1</div>
+      </div>
+
+      <!-- Player 2 / AI -->
+      <div class="fighter-hud p2">
+        <div class="hud-name-bar">
+          <span class="hud-name" id="p2-name">VEGETA</span>
+          <span class="hud-transform-name" id="p2-form">BASE</span>
+        </div>
+        <div class="bar-frame">
+          <div class="bar-lag" id="p2-hp-lag" style="width: 100%;"></div>
+          <div class="hp-bar" id="p2-hp" style="width: 100%;"></div>
+        </div>
+        <div class="ki-bar-frame">
+          <div class="ki-fill" id="p2-ki" style="width: 0%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Combo Counters -->
+    <div class="combo-display p1" id="p1-combo"><span id="p1-hits">0</span> HITS!<br><span style="font-size:1.1rem; color:#fff;" id="p1-dmg">0 DMG</span></div>
+    <div class="combo-display p2" id="p2-combo"><span id="p2-hits">0</span> HITS!<br><span style="font-size:1.1rem; color:#fff;" id="p2-dmg">0 DMG</span></div>
+
+    <!-- Announcements (FIGHT, KO, etc.) -->
+    <div class="announcement-box" id="announcement">ROUND 1</div>
+
+    <!-- Transformation Ready Alert -->
+    <div id="trans-prompt" style="position:absolute; bottom:20px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); border:2px solid var(--gold); color:#fff; padding:6px 16px; border-radius:20px; font-size:1rem; display:none; animation: pulseTitle 1s infinite alternate;">
+      TRANSFORMATION READY! [PRESS T / TAP TRANS]
+    </div>
+  </div>
+
+  <!-- Touch Controls -->
+  <div id="touch-controls">
+    <div class="touch-stick-zone" id="touch-dpad">
+      <div class="touch-stick-thumb" id="touch-thumb"></div>
+    </div>
+    <div class="touch-btn-cluster">
+      <div class="t-btn atk" data-key="Light">L</div>
+      <div class="t-btn atk" data-key="Heavy">H</div>
+      <div class="t-btn spec" data-key="Blast">KI</div>
+      <div class="t-btn spec" data-key="Special">SP</div>
+      <div class="t-btn chg" data-key="Charge">CHG</div>
+      <div class="t-btn" data-key="Dash">DSH</div>
+      <div class="t-btn ult" data-key="Ult">ULTIMATE</div>
+      <div class="t-btn" style="background:#4400aa; border-color:#8844ff;" data-key="Trans">TRN</div>
+    </div>
+  </div>
+
+  <!-- Main Menu Overlay -->
+  <div class="overlay-screen" id="main-menu">
+    <h1 class="anime-title">SUPER Z<br><span style="font-size:0.6em; color:var(--gold);">CHAMPIONSHIP</span></h1>
+    <div class="anime-subtitle">ULTIMATE ANIME BROWSER SHOWDOWN</div>
+    <div class="btn-group">
+      <button class="anime-btn" onclick="GameApp.openModeSelect('arcade')">ARCADE BATTLE</button>
+      <button class="anime-btn" onclick="GameApp.openModeSelect('training')">TRAINING MODE</button>
+      <button class="anime-btn secondary" onclick="GameApp.openScreen('roster-screen')">CHARACTERS & LORE</button>
+      <button class="anime-btn secondary" onclick="GameApp.openScreen('controls-screen')">HOW TO PLAY & KEYS</button>
+      <button class="anime-btn secondary" onclick="GameApp.openScreen('settings-screen')">SETTINGS</button>
+    </div>
+  </div>
+
+  <!-- Character Select Screen -->
+  <div class="overlay-screen hidden" id="char-select-screen">
+    <div class="select-container">
+      <h2 class="anime-title" style="font-size: 2.2rem; margin-bottom: 5px;">SELECT YOUR FIGHTER</h2>
+
+      <div class="preview-area">
+        <div class="fighter-preview-box" id="p1-box-preview">
+          <div style="font-size: 3rem;" id="p1-preview-icon">🥋</div>
+          <div class="fighter-stats">
+            <h3 style="color:var(--blue); font-size:1.2rem;" id="p1-prev-name">Goku</h3>
+            <p id="p1-prev-form" style="color:var(--gold); font-size:0.8rem; margin-bottom:6px;">Base / Super Saiyan</p>
+            <div class="stat-row"><span>Speed</span><div class="stat-bar"><div class="stat-fill" id="p1-stat-spd" style="width:85%"></div></div></div>
+            <div class="stat-row"><span>Power</span><div class="stat-bar"><div class="stat-fill" id="p1-stat-pwr" style="width:80%"></div></div></div>
+            <div class="stat-row"><span>Ki Capacity</span><div class="stat-bar"><div class="stat-fill" id="p1-stat-ki" style="width:90%"></div></div></div>
+          </div>
+        </div>
+
+        <div style="text-align:center;">
+          <div style="font-size:2rem; font-style:italic; color:var(--gold);">VS</div>
+          <label style="font-size:0.8rem; display:block; margin-top:5px;">AI DIFFICULTY</label>
+          <select id="ai-difficulty-select" style="background:#111; color:#fff; border:1px solid #777; padding:4px 8px; border-radius:4px; font-family:sans-serif; margin-top:2px;">
+            <option value="easy">EASY</option>
+            <option value="normal" selected>NORMAL</option>
+            <option value="hard">HARD</option>
+            <option value="expert">EXPERT</option>
+          </select>
+        </div>
+
+        <div class="fighter-preview-box" id="p2-box-preview">
+          <div style="font-size: 3rem;" id="p2-preview-icon">👑</div>
+          <div class="fighter-stats">
+            <h3 style="color:var(--primary); font-size:1.2rem;" id="p2-prev-name">Vegeta</h3>
+            <p id="p2-prev-form" style="color:var(--gold); font-size:0.8rem; margin-bottom:6px;">Base / Super Saiyan</p>
+            <div class="stat-row"><span>Speed</span><div class="stat-bar"><div class="stat-fill" id="p2-stat-spd" style="width:80%"></div></div></div>
+            <div class="stat-row"><span>Power</span><div class="stat-bar"><div class="stat-fill" id="p2-stat-pwr" style="width:90%"></div></div></div>
+            <div class="stat-row"><span>Ki Capacity</span><div class="stat-bar"><div class="stat-fill" id="p2-stat-ki" style="width:85%"></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="char-roster" id="roster-grid"></div>
+
+      <!-- Stage Selector -->
+      <div style="width:100%; text-align:center;">
+        <span style="font-size:0.85rem; color:#aaa; letter-spacing:2px;">SELECT ARENA</span>
+        <div class="stage-carousel" id="stage-list"></div>
+      </div>
+
+      <div style="display:flex; gap:15px; margin-top:10px;">
+        <button class="anime-btn secondary" onclick="GameApp.openScreen('main-menu')">BACK</button>
+        <button class="anime-btn" style="min-width:200px;" onclick="GameApp.startMatchFromSelect()">FIGHT!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Controls Modal Screen -->
+  <div class="overlay-screen hidden" id="controls-screen">
+    <div class="modal-panel">
+      <h2 style="color:var(--gold); text-align:center; margin-bottom:15px;">CONTROLS & MOVES</h2>
+      <div style="font-family:sans-serif; font-size:0.9rem; line-height:1.5;">
+        <div class="setting-row"><span>Move Left / Right</span><div><span class="key-badge">A / D</span> or <span class="key-badge">← / →</span></div></div>
+        <div class="setting-row"><span>Jump / Air Dash</span><div><span class="key-badge">W</span> or <span class="key-badge">↑</span></div></div>
+        <div class="setting-row"><span>Crouch / Guard (Hold Back/Down)</span><div><span class="key-badge">S</span> or <span class="key-badge">↓</span></div></div>
+        <div class="setting-row"><span>Light Melee</span><div><span class="key-badge">J</span> / <span class="key-badge">Num 1</span></div></div>
+        <div class="setting-row"><span>Heavy Smash (Wall Bounce)</span><div><span class="key-badge">K</span> / <span class="key-badge">Num 2</span></div></div>
+        <div class="setting-row"><span>Ki Blast (Rapid fire)</span><div><span class="key-badge">L</span> / <span class="key-badge">Num 3</span></div></div>
+        <div class="setting-row"><span>Special Beam Attack (25% Ki)</span><div><span class="key-badge">U</span> / <span class="key-badge">Num 4</span></div></div>
+        <div class="setting-row"><span>Ultimate Cinematic (100% Ki)</span><div><span class="key-badge">I</span> / <span class="key-badge">Num 5</span></div></div>
+        <div class="setting-row"><span>Charge Ki</span><div><span class="key-badge">Space</span> / <span class="key-badge">C</span></div></div>
+        <div class="setting-row"><span>Vanish / Flash Dash</span><div><span class="key-badge">Shift</span> / <span class="key-badge">O</span></div></div>
+        <div class="setting-row"><span>Transform (Full Meter)</span><div><span class="key-badge">T</span></div></div>
+        <div class="setting-row"><span>Pause Game</span><div><span class="key-badge">Escape</span> / <span class="key-badge">P</span></div></div>
+      </div>
+      <div style="text-align:center; margin-top:20px;">
+        <button class="anime-btn" onclick="GameApp.openScreen('main-menu')">CLOSE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Screen -->
+  <div class="overlay-screen hidden" id="settings-screen">
+    <div class="modal-panel">
+      <h2 style="color:var(--gold); text-align:center; margin-bottom:15px;">GAME SETTINGS</h2>
+      <div style="font-family:sans-serif; font-size:0.95rem;">
+        <div class="setting-row">
+          <span>Master Audio & BGM Synthesizer</span>
+          <input type="checkbox" id="setting-audio-toggle" checked onchange="AudioSys.toggleAudio(this.checked)">
+        </div>
+        <div class="setting-row">
+          <span>Sound Effects Volume</span>
+          <input type="range" min="0" max="100" value="80" oninput="AudioSys.setSfxVolume(this.value/100)">
+        </div>
+        <div class="setting-row">
+          <span>Screen Shake Intensity</span>
+          <input type="range" id="shake-slider" min="0" max="200" value="100">
+        </div>
+        <div class="setting-row">
+          <span>Force On-Screen Touch Controls</span>
+          <input type="checkbox" id="setting-touch-toggle" onchange="GameApp.toggleTouchOverlay(this.checked)">
+        </div>
+        <div class="setting-row">
+          <span>Training Dummy AI</span>
+          <select id="training-dummy-mode" style="background:#111; color:#fff; border:1px solid #555; padding:3px 6px;">
+            <option value="stand">Stand Dummy</option>
+            <option value="block">Auto-Block</option>
+            <option value="fight">Normal Fight</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <span>Training Infinite Ki & HP</span>
+          <input type="checkbox" id="training-inf-bars">
+        </div>
+      </div>
+      <div style="text-align:center; margin-top:20px;">
+        <button class="anime-btn" onclick="GameApp.openScreen('main-menu')">DONE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Character Roster Lore Modal -->
+  <div class="overlay-screen hidden" id="roster-screen">
+    <div class="modal-panel" style="max-width:700px;">
+      <h2 style="color:var(--gold); text-align:center; margin-bottom:15px;">Z-CHAMPIONS ROSTER</h2>
+      <div id="lore-content" style="font-family:sans-serif; font-size:0.9rem; line-height:1.6; max-height:55vh; overflow-y:auto;">
+        <!-- Filled dynamically -->
+      </div>
+      <div style="text-align:center; margin-top:20px;">
+        <button class="anime-btn" onclick="GameApp.openScreen('main-menu')">BACK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Match Pause / Game Over Screen -->
+  <div class="overlay-screen hidden" id="match-end-screen">
+    <h2 class="anime-title" id="end-title">VICTORY</h2>
+    <div class="anime-subtitle" id="end-subtitle">GOKU WINS THE BATTLE!</div>
+    <div class="btn-group">
+      <button class="anime-btn" onclick="GameApp.restartCurrentMatch()">REMATCH</button>
+      <button class="anime-btn secondary" onclick="GameApp.openScreen('char-select-screen')">CHARACTER SELECT</button>
+      <button class="anime-btn secondary" onclick="GameApp.openScreen('main-menu')">MAIN MENU</button>
+    </div>
+  </div>
+
+  <!-- Pause Overlay -->
+  <div class="overlay-screen hidden" id="pause-screen">
+    <h2 class="anime-title" style="font-size:3rem;">PAUSED</h2>
+    <div class="btn-group">
+      <button class="anime-btn" onclick="GameApp.resumeGame()">RESUME</button>
+      <button class="anime-btn secondary" onclick="GameApp.restartCurrentMatch()">RESTART</button>
+      <button class="anime-btn secondary" onclick="GameApp.openScreen('main-menu')">QUIT TO MENU</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/**
+ * AUDIO SYSTEM - Web Audio API procedural synthesizer for SFX and Music
+ */
+const AudioSys = (() => {
+  let ctx = null;
+  let enabled = true;
+  let sfxVol = 0.8;
+  let bgmOsc = null;
+  let bgmGain = null;
+  let isBgmPlaying = false;
+
+  function init() {
+    if (!ctx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      ctx = new AudioContext();
+    }
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+  }
+
+  function playHit(type = 'light') {
+    if (!enabled) return;
+    init();
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const noise = ctx.createBufferSource();
+    
+    // Impact Noise Buffer
+    const bufferSize = ctx.sampleRate * 0.08;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    noise.buffer = buffer;
+
+    const noiseFilter = ctx.createBiquadFilter();
+    noiseFilter.type = 'lowpass';
+    noiseFilter.frequency.setValueAtTime(type === 'heavy' ? 800 : 1800, t);
+
+    if (type === 'light') {
+      osc.frequency.setValueAtTime(240, t);
+      osc.frequency.exponentialRampToValueAtTime(40, t + 0.08);
+      gain.gain.setValueAtTime(sfxVol * 0.7, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.08);
+    } else {
+      osc.frequency.setValueAtTime(140, t);
+      osc.frequency.exponentialRampToValueAtTime(25, t + 0.22);
+      gain.gain.setValueAtTime(sfxVol * 1.1, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.22);
+    }
+
+    osc.connect(gain);
+    noise.connect(noiseFilter);
+    noiseFilter.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(t);
+    noise.start(t);
+    osc.stop(t + 0.25);
+    noise.stop(t + 0.25);
+  }
+
+  function playKiBlast() {
+    if (!enabled) return;
+    init();
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(800, t);
+    osc.frequency.exponentialRampToValueAtTime(120, t + 0.15);
+    gain.gain.setValueAtTime(sfxVol * 0.5, t);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.15);
+  }
+
+  function playBeam() {
+    if (!enabled) return;
+    init();
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(320, t);
+    osc.frequency.linearRampToValueAtTime(650, t + 0.4);
+    gain.gain.setValueAtTime(sfxVol * 0.7, t);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.5);
+  }
+
+  function playDash() {
+    if (!enabled) return;
+    init();
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(400, t);
+    osc.frequency.exponentialRampToValueAtTime(80, t + 0.12);
+    gain.gain.setValueAtTime(sfxVol * 0.6, t);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.12);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.12);
+  }
+
+  function playTransform() {
+    if (!enabled) return;
+    init();
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(150, t);
+    osc.frequency.linearRampToValueAtTime(900, t + 0.8);
+    gain.gain.setValueAtTime(sfxVol * 0.9, t);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.9);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.9);
+  }
+
+  function startBgm() {
+    if (!enabled || isBgmPlaying) return;
+    init();
+    isBgmPlaying = true;
+    // Energetic generative anime synth bassline
+    let step = 0;
+    const notes = [110, 110, 130, 146, 110, 110, 164, 146];
+    function stepBeat() {
+      if (!isBgmPlaying || !enabled) return;
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(notes[step % notes.length], t);
+      gain.gain.setValueAtTime(0.12 * sfxVol, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.18);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.2);
+      step++;
+      setTimeout(stepBeat, 170);
+    }
+    stepBeat();
+  }
+
+  function stopBgm() {
+    isBgmPlaying = false;
+  }
+
+  return {
+    init,
+    playHit,
+    playKiBlast,
+    playBeam,
+    playDash,
+    playTransform,
+    startBgm,
+    stopBgm,
+    toggleAudio: (val) => { enabled = val; if (!val) stopBgm(); },
+    setSfxVolume: (val) => { sfxVol = val; }
+  };
+})();
+
+/**
+ * CHARACTERS DATA DEFINITIONS
+ * 7 Unique Z-Warriors & Villains with distinct specs, scaling & palettes
+ */
+const CHARACTERS = {
+  goku: {
+    id: 'goku',
+    name: 'Goku',
+    title: 'Earth\'s Saiyan Hero',
+    avatar: '🥋',
+    color: '#ff5500',
+    auraColor: 'rgba(255, 140, 0, 0.75)',
+    hairColor: '#1a1a1a',
+    giColor: '#e64a19',
+    pantsColor: '#e64a19',
+    bootsColor: '#1a237e',
+    beltColor: '#1a237e',
+    stats: { speed: 8.5, power: 1.0, defense: 1.0, maxKi: 100 },
+    transName: 'SUPER SAIYAN',
+    transHair: '#ffd700',
+    transAura: 'rgba(255, 230, 0, 0.85)',
+    specialName: 'KAMEHAMEHA',
+    specialColor: '#00e5ff',
+    ultimateName: 'SUPER DRAGON SPIRIT BURST',
+    ultimateColor: '#00bfff',
+    lore: 'The legendary martial artist from Earth. Well-balanced fighter with incredible combo potential and the signature Kamehameha beam.'
+  },
+  vegeta: {
+    id: 'vegeta',
+    name: 'Vegeta',
+    title: 'Prince of Saiyans',
+    avatar: '👑',
+    color: '#304ffe',
+    auraColor: 'rgba(33, 150, 243, 0.8)',
+    hairColor: '#151515',
+    giColor: '#1a237e',
+    pantsColor: '#1a237e',
+    bootsColor: '#ffffff',
+    armorColor: '#ffffff',
+    stats: { speed: 8.8, power: 1.15, defense: 0.95, maxKi: 100 },
+    transName: 'SUPER VEGETA',
+    transHair: '#ffe600',
+    transAura: 'rgba(255, 215, 0, 0.9)',
+    specialName: 'GALICK GUN',
+    specialColor: '#e040fb',
+    ultimateName: 'FINAL FLASH',
+    ultimateColor: '#ffe57f',
+    lore: 'Prideful Saiyan Prince focused on relentless offensive pressure, rapid Ki barrages and the devastating Final Flash.'
+  },
+  gohan: {
+    id: 'gohan',
+    name: 'Gohan',
+    title: 'Hidden Potential',
+    avatar: '⚡',
+    color: '#7b1fa2',
+    auraColor: 'rgba(224, 64, 251, 0.75)',
+    hairColor: '#111111',
+    giColor: '#512da8',
+    pantsColor: '#512da8',
+    bootsColor: '#d32f2f',
+    beltColor: '#d32f2f',
+    stats: { speed: 9.2, power: 0.95, defense: 1.05, maxKi: 110 },
+    transName: 'ULTIMATE AWAKENED',
+    transHair: '#111111',
+    transAura: 'rgba(255, 255, 255, 0.95)',
+    specialName: 'MASENKO',
+    specialColor: '#ffd600',
+    ultimateName: 'FATHER-SON KI ERUPTION',
+    ultimateColor: '#00e5ff',
+    lore: 'Possesses immense latent battle power. Extremely agile in close combat with rapid strike counters.'
+  },
+  piccolo: {
+    id: 'piccolo',
+    name: 'Piccolo',
+    title: 'Namekian Tactician',
+    avatar: '👽',
+    color: '#2e7d32',
+    auraColor: 'rgba(76, 175, 80, 0.75)',
+    skinColor: '#43a047',
+    giColor: '#4a148c',
+    pantsColor: '#4a148c',
+    capeColor: '#ffffff',
+    beltColor: '#00897b',
+    stats: { speed: 7.8, power: 1.05, defense: 1.2, maxKi: 120 },
+    transName: 'ORANGE AWAKENING',
+    transSkin: '#fb8c00',
+    transAura: 'rgba(255, 110, 0, 0.9)',
+    specialName: 'SPECIAL BEAM CANNON',
+    specialColor: '#e040fb',
+    ultimateName: 'HELLZONE GRENADE',
+    ultimateColor: '#ffeb3b',
+    lore: 'Wise Namekian master with long reach, durable defense, and piercing armor-breaking energy techniques.'
+  },
+  frieza: {
+    id: 'frieza',
+    name: 'Frieza',
+    title: 'Galactic Tyrant',
+    avatar: '😈',
+    color: '#8e24aa',
+    auraColor: 'rgba(156, 39, 176, 0.8)',
+    skinColor: '#ffffff',
+    bodyColor: '#ffffff',
+    plateColor: '#7b1fa2',
+    stats: { speed: 9.4, power: 1.1, defense: 0.9, maxKi: 90 },
+    transName: 'GOLDEN FORM',
+    transSkin: '#ffd700',
+    transAura: 'rgba(255, 215, 0, 0.95)',
+    specialName: 'DEATH BEAM',
+    specialColor: '#ff1744',
+    ultimateName: 'SUPERNOVA BALL',
+    ultimateColor: '#ff3d00',
+    lore: 'Cruel conqueror of worlds. Excels at high-speed keep-away zoning and instantaneous pinpoint lasers.'
+  },
+  cell: {
+    id: 'cell',
+    name: 'Cell',
+    title: 'The Perfect Being',
+    avatar: '🧬',
+    color: '#00c853',
+    auraColor: 'rgba(0, 230, 118, 0.8)',
+    skinColor: '#00e676',
+    plateColor: '#212121',
+    spotColor: '#1b5e20',
+    stats: { speed: 8.2, power: 1.2, defense: 1.1, maxKi: 105 },
+    transName: 'SUPER PERFECT',
+    transAura: 'rgba(255, 235, 59, 0.95)',
+    specialName: 'PERFECT BARRIER',
+    specialColor: '#00e5ff',
+    ultimateName: 'SOLAR KAMEHAMEHA',
+    ultimateColor: '#ff6d00',
+    lore: 'Bio-engineered ultimate warrior containing the DNA of the greatest fighters, capable of crushing barriers and colossal blasts.'
+  },
+  buu: {
+    id: 'buu',
+    name: 'Majin Buu',
+    title: 'Ancient Chaos Destroyer',
+    avatar: '🍬',
+    color: '#f48fb1',
+    auraColor: 'rgba(240, 98, 146, 0.8)',
+    skinColor: '#ff80ab',
+    pantsColor: '#ffffff',
+    beltColor: '#212121',
+    stats: { speed: 7.5, power: 1.25, defense: 1.3, maxKi: 110 },
+    transName: 'PURE EVIL CHAOS',
+    transSkin: '#ff4081',
+    transAura: 'rgba(233, 30, 99, 0.95)',
+    specialName: 'VAPORIZING BEAM',
+    specialColor: '#ff4081',
+    ultimateName: 'ANGRY PLANET EXPLOSION',
+    ultimateColor: '#e91e63',
+    lore: 'Unpredictable ancient creature with rubbery physiology, high durability, and explosive whole-screen energy bursts.'
+  }
+};
+
+/**
+ * ARENAS / STAGES DEFINITIONS
+ */
+const ARENAS = [
+  {
+    id: 'wasteland',
+    name: 'Rocky Wasteland',
+    skyTop: '#1a2980',
+    skyBottom: '#26d0ce',
+    groundColor: '#795548',
+    groundAccent: '#4e342e',
+    mountains: '#3e2723',
+    dustColor: 'rgba(215, 160, 100, 0.25)'
+  },
+  {
+    id: 'tournament',
+    name: 'World Martial Arts Arena',
+    skyTop: '#0052d4',
+    skyBottom: '#9cecfb',
+    groundColor: '#9e9e9e',
+    groundAccent: '#616161',
+    mountains: '#455a64',
+    tiled: true
+  },
+  {
+    id: 'desert',
+    name: 'Desert Ruins',
+    skyTop: '#ff4e50',
+    skyBottom: '#f9d423',
+    groundColor: '#d7ccc8',
+    groundAccent: '#a1887f',
+    mountains: '#8d6e63',
+    dustColor: 'rgba(240, 200, 120, 0.35)'
+  },
+  {
+    id: 'city',
+    name: 'Futuristic Neo City',
+    skyTop: '#0f0c29',
+    skyBottom: '#302b63',
+    groundColor: '#263238',
+    groundAccent: '#00b0ff',
+    buildings: true
+  },
+  {
+    id: 'alien',
+    name: 'Planet Namekian Horizons',
+    skyTop: '#004d40',
+    skyBottom: '#00bfa5',
+    groundColor: '#1b5e20',
+    groundAccent: '#2e7d32',
+    mountains: '#004d40',
+    alienTrees: true
+  }
+];
+
+/**
+ * FIGHTER CLASS - SKELETAL & VECTOR ANIMATED ENGINE
+ */
+class Fighter {
+  constructor(charData, x, isPlayer = true) {
+    this.data = charData;
+    this.isPlayer = isPlayer;
+    this.x = x;
+    this.y = 0;
+    this.vx = 0;
+    this.vy = 0;
+    this.width = 60;
+    this.height = 110;
+    this.facing = isPlayer ? 1 : -1;
+    this.groundY = 480;
+
+    // Combat Stats
+    this.maxHp = 1000;
+    this.hp = this.maxHp;
+    this.maxKi = charData.stats.maxKi;
+    this.ki = 20;
+    this.transMeter = 0;
+    this.maxTransMeter = 100;
+    this.isTransformed = false;
+
+    // Multipliers
+    this.speedMult = charData.stats.speed;
+    this.powerMult = charData.stats.power;
+    this.defenseMult = charData.stats.defense;
+
+    // States: IDLE, WALK, DASH, JUMP, CROUCH, BLOCK, ATTACK_LIGHT, ATTACK_HEAVY, BLAST, SPECIAL, ULTIMATE, CHARGE, HIT_STUN, KNOCKED_DOWN, TRANSFORMING
+    this.state = 'IDLE';
+    this.stateTimer = 0;
+    this.isGrounded = true;
+    this.hitStun = 0;
+    this.blockStun = 0;
+    this.comboCount = 0;
+    this.comboDamage = 0;
+    this.comboTimer = 0;
+
+    // Animation Timers & Smears
+    this.animFrame = 0;
+    this.chargingAura = false;
+    this.auraPulse = 0;
+    this.attackHitbox = null;
+    this.hasHitCurrentAttack = false;
+
+    // AI Tracking
+    this.aiThinkTimer = 0;
+    this.aiAction = 'idle';
+  }
+
+  update(dt, opponent, stageWidth, gameEngine) {
+    this.stateTimer += dt;
+    this.animFrame += dt * 10;
+    this.auraPulse += dt * 8;
+
+    // Auto facing when not attacking/dashing
+    if (!this.state.startsWith('ATTACK') && this.state !== 'HIT_STUN' && this.state !== 'KNOCKED_DOWN') {
+      if (this.x < opponent.x - 10) this.facing = 1;
+      else if (this.x > opponent.x + 10) this.facing = -1;
+    }
+
+    // Passive Ki & Combo Decay
+    if (this.comboTimer > 0) {
+      this.comboTimer -= dt;
+      if (this.comboTimer <= 0) {
+        this.comboCount = 0;
+        this.comboDamage = 0;
+      }
+    }
+
+    // Handle State Timers & Transitions
+    this.handleStateLogic(dt, opponent, gameEngine);
+
+    // Physics
+    this.x += this.vx * dt * 60;
+    this.y += this.vy * dt * 60;
+
+    // Gravity
+    if (this.y < 0) {
+      this.vy += 0.85;
+      this.isGrounded = false;
+    } else {
+      this.y = 0;
+      this.vy = 0;
+      this.isGrounded = true;
+      if (this.state === 'JUMP') this.state = 'IDLE';
+    }
+
+    // Arena Boundaries
+    const minX = 40;
+    const maxX = stageWidth - 40;
+    if (this.x < minX) this.x = minX;
+    if (this.x > maxX) this.x = maxX;
+
+    // Check Attack Collisions
+    if (this.attackHitbox && !this.hasHitCurrentAttack) {
+      this.checkHitboxCollision(opponent, gameEngine);
+    }
+  }
+
+  handleStateLogic(dt, opponent, gameEngine) {
+    switch (this.state) {
+      case 'DASH':
+        if (this.stateTimer > 0.2) {
+          this.vx = 0;
+          this.state = 'IDLE';
+        }
+        break;
+
+      case 'ATTACK_LIGHT':
+        // Startup: 0.08s, Active: 0.08s, Recovery: 0.1s
+        if (this.stateTimer < 0.08) {
+          this.attackHitbox = null;
+        } else if (this.stateTimer < 0.16) {
+          this.attackHitbox = {
+            x: this.x + this.facing * 40,
+            y: this.y - 70,
+            radius: 35,
+            damage: 35 * this.powerMult,
+            knockback: 6 * this.facing,
+            hitStun: 0.28,
+            type: 'light'
+          };
+        } else {
+          this.attackHitbox = null;
+        }
+        if (this.stateTimer > 0.26) {
+          this.state = 'IDLE';
+          this.attackHitbox = null;
+          this.hasHitCurrentAttack = false;
+        }
+        break;
+
+      case 'ATTACK_HEAVY':
+        // Startup: 0.18s, Active: 0.12s, Recovery: 0.2s
+        if (this.stateTimer < 0.18) {
+          this.attackHitbox = null;
+        } else if (this.stateTimer < 0.30) {
+          this.attackHitbox = {
+            x: this.x + this.facing * 50,
+            y: this.y - 65,
+            radius: 45,
+            damage: 85 * this.powerMult,
+            knockback: 18 * this.facing,
+            hitStun: 0.55,
+            type: 'heavy'
+          };
+        } else {
+          this.attackHitbox = null;
+        }
+        if (this.stateTimer > 0.5) {
+          this.state = 'IDLE';
+          this.attackHitbox = null;
+          this.hasHitCurrentAttack = false;
+        }
+        break;
+
+      case 'BLAST':
+        if (this.stateTimer > 0.12 && !this.hasHitCurrentAttack) {
+          this.hasHitCurrentAttack = true;
+          gameEngine.spawnKiBlast(this.x + this.facing * 35, this.y - 70, this.facing, this);
+        }
+        if (this.stateTimer > 0.3) {
+          this.state = 'IDLE';
+          this.hasHitCurrentAttack = false;
+        }
+        break;
+
+      case 'SPECIAL':
+        if (this.stateTimer > 0.25 && !this.hasHitCurrentAttack) {
+          this.hasHitCurrentAttack = true;
+          gameEngine.spawnBeam(this.x + this.facing * 40, this.y - 70, this.facing, this, false);
+          AudioSys.playBeam();
+        }
+        if (this.stateTimer > 0.8) {
+          this.state = 'IDLE';
+          this.hasHitCurrentAttack = false;
+        }
+        break;
+
+      case 'ULTIMATE':
+        if (this.stateTimer > 0.5 && !this.hasHitCurrentAttack) {
+          this.hasHitCurrentAttack = true;
+          gameEngine.spawnBeam(this.x + this.facing * 45, this.y - 70, this.facing, this, true);
+          gameEngine.triggerScreenShake(15);
+          AudioSys.playBeam();
+        }
+        if (this.stateTimer > 1.3) {
+          this.state = 'IDLE';
+          this.hasHitCurrentAttack = false;
+        }
+        break;
+
+      case 'CHARGE':
+        this.ki = Math.min(this.maxKi, this.ki + dt * 45);
+        this.transMeter = Math.min(this.maxTransMeter, this.transMeter + dt * 15);
+        gameEngine.spawnChargeParticles(this.x, this.y - 50, this.getAuraColor());
+        break;
+
+      case 'TRANSFORMING':
+        this.vx = 0;
+        gameEngine.spawnChargeParticles(this.x, this.y - 50, '#ffffff');
+        if (this.stateTimer > 1.2) {
+          this.isTransformed = true;
+          this.powerMult *= 1.35;
+          this.speedMult *= 1.2;
+          this.defenseMult *= 1.25;
+          this.state = 'IDLE';
+          gameEngine.triggerScreenShake(20);
+          AudioSys.playTransform();
+        }
+        break;
+
+      case 'HIT_STUN':
+        this.vx *= 0.88;
+        if (this.stateTimer > this.hitStun) {
+          this.state = 'IDLE';
+          this.hitStun = 0;
+        }
+        break;
+
+      case 'KNOCKED_DOWN':
+        this.vx *= 0.85;
+        if (this.stateTimer > 0.8) {
+          this.state = 'IDLE';
+        }
+        break;
+    }
+  }
+
+  checkHitboxCollision(target, gameEngine) {
+    if (!this.attackHitbox) return;
+    const hb = this.attackHitbox;
+    // Target hurtbox
+    const tx = target.x;
+    const ty = target.y - target.height / 2;
+    const dist = Math.hypot(hb.x - tx, hb.y - ty);
+
+    if (dist < hb.radius + 35) {
+      this.hasHitCurrentAttack = true;
+      const isBlocking = target.state === 'BLOCK' && target.facing !== this.facing;
+      
+      if (isBlocking) {
+        target.takeDamage(hb.damage * 0.15, false);
+        target.vx = hb.knockback * 0.4;
+        gameEngine.spawnHitSpark(hb.x, hb.y, '#00ffff');
+        AudioSys.playHit('light');
+      } else {
+        target.takeDamage(hb.damage, true);
+        target.takeKnockback(hb.knockback, hb.hitStun, hb.type === 'heavy');
+        this.transMeter = Math.min(this.maxTransMeter, this.transMeter + 8);
+        this.ki = Math.min(this.maxKi, this.ki + 5);
+
+        // Combo Register
+        this.comboCount++;
+        this.comboDamage += Math.round(hb.damage);
+        this.comboTimer = 1.6;
+
+        gameEngine.spawnHitSpark(hb.x, hb.y, hb.type === 'heavy' ? '#ff1100' : '#ffd700');
+        gameEngine.triggerHitStop(hb.type === 'heavy' ? 0.12 : 0.05);
+        gameEngine.triggerScreenShake(hb.type === 'heavy' ? 10 : 4);
+        AudioSys.playHit(hb.type);
+      }
+    }
+  }
+
+  takeDamage(amount, stun = true) {
+    const finalDmg = amount / this.defenseMult;
+    this.hp = Math.max(0, this.hp - finalDmg);
+    this.transMeter = Math.min(this.maxTransMeter, this.transMeter + 4);
+  }
+
+  takeKnockback(power, stunTime, isHeavy = false) {
+    this.vx = power;
+    this.hitStun = stunTime;
+    this.stateTimer = 0;
+    if (isHeavy && Math.abs(power) > 12) {
+      this.state = 'KNOCKED_DOWN';
+      this.vy = -6;
+    } else {
+      this.state = 'HIT_STUN';
+    }
+  }
+
+  // Action Triggers
+  lightAttack() {
+    if (this.canAct()) {
+      this.state = 'ATTACK_LIGHT';
+      this.stateTimer = 0;
+      this.hasHitCurrentAttack = false;
+    }
+  }
+
+  heavyAttack() {
+    if (this.canAct()) {
+      this.state = 'ATTACK_HEAVY';
+      this.stateTimer = 0;
+      this.hasHitCurrentAttack = false;
+    }
+  }
+
+  kiBlast() {
+    if (this.canAct() && this.ki >= 8) {
+      this.ki -= 8;
+      this.state = 'BLAST';
+      this.stateTimer = 0;
+      this.hasHitCurrentAttack = false;
+      AudioSys.playKiBlast();
+    }
+  }
+
+  specialMove() {
+    if (this.canAct() && this.ki >= 30) {
+      this.ki -= 30;
+      this.state = 'SPECIAL';
+      this.stateTimer = 0;
+      this.hasHitCurrentAttack = false;
+    }
+  }
+
+  ultimateMove() {
+    if (this.canAct() && this.ki >= 85) {
+      this.ki -= 85;
+      this.state = 'ULTIMATE';
+      this.stateTimer = 0;
+      this.hasHitCurrentAttack = false;
+    }
+  }
+
+  dash(dir) {
+    if (this.canAct()) {
+      this.state = 'DASH';
+      this.stateTimer = 0;
+      this.vx = dir * this.speedMult * 2.8;
+      AudioSys.playDash();
+    }
+  }
+
+  jump() {
+    if (this.canAct() && this.isGrounded) {
+      this.vy = -18;
+      this.state = 'JUMP';
+      this.stateTimer = 0;
+    }
+  }
+
+  transform() {
+    if (this.canAct() && this.transMeter >= 100 && !this.isTransformed) {
+      this.state = 'TRANSFORMING';
+      this.stateTimer = 0;
+    }
+  }
+
+  canAct() {
+    return this.state !== 'HIT_STUN' && this.state !== 'KNOCKED_DOWN' && this.state !== 'TRANSFORMING';
+  }
+
+  getAuraColor() {
+    if (this.isTransformed) {
+      return this.data.transAura || 'rgba(255, 230, 0, 0.85)';
+    }
+    return this.data.auraColor;
+  }
+
+  // Canvas Vector Anime Character Renderer
+  draw(ctx) {
+    ctx.save();
+    ctx.translate(this.x, this.groundY + this.y);
+    ctx.scale(this.facing, 1);
+
+    // Draw Charging / Transforming Aura
+    if (this.state === 'CHARGE' || this.state === 'TRANSFORMING' || (this.isTransformed && Math.sin(this.auraPulse) > 0.3)) {
+      this.drawAura(ctx);
+    }
+
+    // Shadow on Ground
+    ctx.save();
+    ctx.scale(1, 0.25);
+    ctx.beginPath();
+    ctx.arc(0, -this.y * 3.5, 35, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fill();
+    ctx.restore();
+
+    // SKELETAL ANIME POSE RENDERING
+    ctx.lineWidth = 4;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    const isSSJ = this.isTransformed;
+    const skinColor = (this.isTransformed && this.data.transSkin) ? this.data.transSkin : (this.data.skinColor || '#fcd5b4');
+    const hairCol = isSSJ ? this.data.transHair : this.data.hairColor;
+    const giCol = this.data.giColor || '#e64a19';
+    const pantsCol = this.data.pantsColor || '#e64a19';
+
+    // Stance offsets
+    let bodyBob = Math.sin(this.animFrame) * 3;
+    let legSpread = 16;
+    let armAngleL = 0.4;
+    let armAngleR = -0.3;
+
+    if (this.state === 'ATTACK_LIGHT') {
+      armAngleR = -1.5; // Punch out
+      legSpread = 28;
+    } else if (this.state === 'ATTACK_HEAVY') {
+      armAngleR = -2.1; // Big smash
+      legSpread = 32;
+    } else if (this.state === 'BLOCK') {
+      armAngleL = -1.2;
+      armAngleR = -1.1;
+    } else if (this.state === 'CHARGE' || this.state === 'TRANSFORMING') {
+      bodyBob = Math.random() * 4 - 2;
+      armAngleL = 0.8;
+      armAngleR = 0.8;
+    } else if (this.state === 'HIT_STUN' || this.state === 'KNOCKED_DOWN') {
+      bodyBob = -10;
+      armAngleL = 1.2;
+      armAngleR = 1.4;
+    }
+
+    // LEGS
+    ctx.fillStyle = pantsCol;
+    ctx.strokeStyle = '#000';
+    // Left Leg
+    ctx.beginPath();
+    ctx.moveTo(-8, -45 + bodyBob);
+    ctx.lineTo(-legSpread, 0);
+    ctx.lineTo(-legSpread - 6, 0);
+    ctx.lineTo(-14, -45 + bodyBob);
+    ctx.fill();
+    ctx.stroke();
+
+    // Right Leg
+    ctx.beginPath();
+    ctx.moveTo(8, -45 + bodyBob);
+    ctx.lineTo(legSpread, 0);
+    ctx.lineTo(legSpread + 6, 0);
+    ctx.lineTo(14, -45 + bodyBob);
+    ctx.fill();
+    ctx.stroke();
+
+    // TORSO
+    ctx.fillStyle = giCol;
+    ctx.beginPath();
+    ctx.moveTo(-18, -45 + bodyBob);
+    ctx.lineTo(18, -45 + bodyBob);
+    ctx.lineTo(14, -85 + bodyBob);
+    ctx.lineTo(-14, -85 + bodyBob);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // BELT
+    ctx.fillStyle = this.data.beltColor || '#1a237e';
+    ctx.fillRect(-15, -48 + bodyBob, 30, 8);
+
+    // LEFT ARM (Back)
+    ctx.fillStyle = skinColor;
+    ctx.beginPath();
+    ctx.arc(-14, -80 + bodyBob, 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    // HEAD
+    ctx.fillStyle = skinColor;
+    ctx.beginPath();
+    ctx.arc(0, -96 + bodyBob, 15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // EYES & EXPRESION
+    ctx.fillStyle = '#000';
+    if (this.state === 'HIT_STUN') {
+      ctx.fillRect(3, -99 + bodyBob, 4, 2);
+      ctx.fillRect(9, -99 + bodyBob, 4, 2);
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(3, -99 + bodyBob);
+      ctx.lineTo(9, -96 + bodyBob);
+      ctx.lineTo(3, -94 + bodyBob);
+      ctx.fill();
+    }
+
+    // ANIME SPIKY HAIR
+    ctx.fillStyle = hairCol;
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    if (this.data.id === 'piccolo') {
+      // Namekian Antennas
+      ctx.moveTo(-4, -108 + bodyBob);
+      ctx.lineTo(-12, -122 + bodyBob);
+      ctx.moveTo(4, -108 + bodyBob);
+      ctx.lineTo(12, -122 + bodyBob);
+      ctx.stroke();
+    } else if (this.data.id === 'frieza') {
+      // Frieza sleek dome
+      ctx.arc(0, -100 + bodyBob, 14, Math.PI, 0);
+      ctx.fill();
+    } else {
+      // Saiyan Spikes
+      ctx.moveTo(-16, -95 + bodyBob);
+      ctx.lineTo(-26, -118 + bodyBob);
+      ctx.lineTo(-10, -112 + bodyBob);
+      ctx.lineTo(0, -132 + bodyBob);
+      ctx.lineTo(10, -115 + bodyBob);
+      ctx.lineTo(26, -122 + bodyBob);
+      ctx.lineTo(16, -95 + bodyBob);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // RIGHT ARM (Front)
+    ctx.fillStyle = skinColor;
+    ctx.save();
+    ctx.translate(10, -80 + bodyBob);
+    ctx.rotate(armAngleR);
+    ctx.fillRect(0, -6, 26, 12);
+    ctx.strokeStyle = '#000';
+    ctx.strokeRect(0, -6, 26, 12);
+    ctx.restore();
+
+    ctx.restore();
+  }
+
+  drawAura(ctx) {
+    const auraCol = this.getAuraColor();
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (let i = 0; i < 4; i++) {
+      const radius = 55 + Math.sin(this.auraPulse + i) * 12;
+      const grad = ctx.createRadialGradient(0, -55, 10, 0, -55, radius);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.5, auraCol);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(0, -55, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+/**
+ * AI CONTROLLER - Reactive state machine with 4 difficulty levels
+ */
+class AIController {
+  constructor(difficulty = 'normal') {
+    this.diff = difficulty;
+    this.timer = 0;
+    this.decisionInterval = this.getInterval();
+  }
+
+  setDifficulty(diff) {
+    this.diff = diff;
+    this.decisionInterval = this.getInterval();
+  }
+
+  getInterval() {
+    switch (this.diff) {
+      case 'expert': return 0.08;
+      case 'hard': return 0.16;
+      case 'normal': return 0.28;
+      default: return 0.45;
+    }
+  }
+
+  update(dt, aiFighter, playerFighter) {
+    this.timer += dt;
+    if (this.timer < this.decisionInterval) return;
+    this.timer = 0;
+
+    if (!aiFighter.canAct()) return;
+
+    const dist = Math.abs(aiFighter.x - playerFighter.x);
+    const pAttacking = playerFighter.state.startsWith('ATTACK') || playerFighter.state === 'SPECIAL' || playerFighter.state === 'ULTIMATE';
+
+    // Auto-transform if ready
+    if (aiFighter.transMeter >= 100 && !aiFighter.isTransformed) {
+      aiFighter.transform();
+      return;
+    }
+
+    // Reaction Defense / Blocking
+    if (pAttacking && dist < 120 && Math.random() < (this.diff === 'expert' ? 0.85 : this.diff === 'hard' ? 0.6 : 0.25)) {
+      aiFighter.state = 'BLOCK';
+      return;
+    }
+
+    // Close Range Combat
+    if (dist < 85) {
+      if (aiFighter.ki >= 85 && Math.random() < 0.6) {
+        aiFighter.ultimateMove();
+      } else if (aiFighter.ki >= 30 && Math.random() < 0.5) {
+        aiFighter.specialMove();
+      } else {
+        const rand = Math.random();
+        if (rand < 0.45) aiFighter.lightAttack();
+        else if (rand < 0.8) aiFighter.heavyAttack();
+        else aiFighter.dash(-aiFighter.facing);
+      }
+    } 
+    // Mid Range Combat
+    else if (dist < 260) {
+      const rand = Math.random();
+      if (rand < 0.4 && aiFighter.ki >= 8) {
+        aiFighter.kiBlast();
+      } else if (rand < 0.7) {
+        aiFighter.dash(aiFighter.facing);
+      } else if (aiFighter.ki < 50) {
+        aiFighter.state = 'CHARGE';
+      }
+    } 
+    // Far Range
+    else {
+      if (aiFighter.ki < 60 && Math.random() < 0.7) {
+        aiFighter.state = 'CHARGE';
+      } else {
+        aiFighter.dash(aiFighter.facing);
+      }
+    }
+  }
+}
+
+/**
+ * GAME ENGINE - Core Orchestrator, VFX, Projectiles & Canvas Loop
+ */
+const GameEngine = (() => {
+  let canvas, ctx;
+  let p1, p2, ai;
+  let projectiles = [];
+  let particles = [];
+  let matchTime = 99;
+  let isPaused = false;
+  let isGameOver = false;
+  let currentArena = ARENAS[0];
+  let gameMode = 'arcade'; // 'arcade' or 'training'
+
+  let screenShake = 0;
+  let hitStopTimer = 0;
+  let lastTime = 0;
+
+  function init() {
+    canvas = document.getElementById('gameCanvas');
+    ctx = canvas.getContext('2d');
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    setupInputs();
+  }
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    if (p1) p1.groundY = canvas.height * 0.78;
+    if (p2) p2.groundY = canvas.height * 0.78;
+  }
+
+  function startMatch(char1Id, char2Id, arenaId, difficulty, mode = 'arcade') {
+    gameMode = mode;
+    currentArena = ARENAS.find(a => a.id === arenaId) || ARENAS[0];
+    
+    p1 = new Fighter(CHARACTERS[char1Id], canvas.width * 0.28, true);
+    p2 = new Fighter(CHARACTERS[char2Id], canvas.width * 0.72, false);
+    ai = new AIController(difficulty);
+
+    p1.groundY = canvas.height * 0.78;
+    p2.groundY = canvas.height * 0.78;
+
+    projectiles = [];
+    particles = [];
+    matchTime = 99;
+    isGameOver = false;
+    isPaused = false;
+
+    // HUD Update
+    document.getElementById('hud-layer').style.display = 'block';
+    document.getElementById('p1-name').innerText = p1.data.name;
+    document.getElementById('p2-name').innerText = p2.data.name;
+    document.getElementById('round-indicator').innerText = mode === 'training' ? 'TRAINING' : 'ROUND 1';
+
+    AudioSys.startBgm();
+    showAnnouncement('ROUND 1 ... FIGHT!');
+
+    lastTime = performance.now();
+    requestAnimationFrame(gameLoop);
+  }
+
+  function showAnnouncement(text) {
+    const el = document.getElementById('announcement');
+    el.innerText = text;
+    el.classList.add('show');
+    setTimeout(() => { el.classList.remove('show'); }, 1200);
+  }
+
+  function triggerScreenShake(amt) {
+    const userSens = (parseInt(document.getElementById('shake-slider').value) || 100) / 100;
+    screenShake = amt * userSens;
+  }
+
+  function triggerHitStop(dur) {
+    hitStopTimer = dur;
+  }
+
+  function spawnHitSpark(x, y, color = '#ffd700') {
+    for (let i = 0; i < 12; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 8 + 3;
+      particles.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 0.25,
+        maxLife: 0.25,
+        color,
+        size: Math.random() * 5 + 3
+      });
+    }
+  }
+
+  function spawnChargeParticles(x, y, color) {
+    for (let i = 0; i < 3; i++) {
+      particles.push({
+        x: x + (Math.random() * 80 - 40),
+        y: y + 50,
+        vx: (Math.random() - 0.5) * 2,
+        vy: -(Math.random() * 6 + 4),
+        life: 0.4,
+        maxLife: 0.4,
+        color,
+        size: Math.random() * 4 + 2
+      });
+    }
+  }
+
+  function spawnKiBlast(x, y, dir, owner) {
+    projectiles.push({
+      type: 'blast',
+      x, y,
+      vx: dir * 18,
+      owner,
+      radius: 14,
+      damage: 28 * owner.powerMult,
+      color: owner.data.color,
+      life: 2.0
+    });
+  }
+
+  function spawnBeam(x, y, dir, owner, isUlt = false) {
+    projectiles.push({
+      type: 'beam',
+      x, y,
+      dir,
+      owner,
+      length: 0,
+      maxLength: canvas.width * 0.9,
+      height: isUlt ? 60 : 35,
+      damage: (isUlt ? 260 : 120) * owner.powerMult,
+      color: isUlt ? (owner.data.ultimateColor || '#00bfff') : (owner.data.specialColor || '#ff0055'),
+      life: isUlt ? 1.2 : 0.6
+    });
+  }
+
+  // GAME LOOP
+  function gameLoop(time) {
+    const dt = Math.min((time - lastTime) / 1000, 0.05);
+    lastTime = time;
+
+    if (!isPaused && !isGameOver) {
+      if (hitStopTimer > 0) {
+        hitStopTimer -= dt;
+      } else {
+        update(dt);
+      }
+    }
+
+    render();
+
+    if (!isGameOver || hitStopTimer > 0) {
+      requestAnimationFrame(gameLoop);
+    }
+  }
+
+  function update(dt) {
+    // Match timer
+    if (gameMode !== 'training') {
+      matchTime -= dt * 0.5;
+      if (matchTime <= 0) {
+        matchTime = 0;
+        endMatch(p1.hp >= p2.hp ? p1 : p2);
+      }
+      document.getElementById('match-timer').innerText = Math.ceil(matchTime);
+    } else {
+      document.getElementById('match-timer').innerText = '∞';
+      // Training mode infinite bars option
+      if (document.getElementById('training-inf-bars').checked) {
+        p1.hp = p1.maxHp;
+        p1.ki = p1.maxKi;
+        p2.hp = p2.maxHp;
+        p2.ki = p2.maxKi;
+      }
+    }
+
+    // AI Logic
+    const dummyMode = document.getElementById('training-dummy-mode')?.value || 'fight';
+    if (gameMode === 'training' && dummyMode === 'stand') {
+      p2.state = 'IDLE';
+    } else if (gameMode === 'training' && dummyMode === 'block') {
+      p2.state = 'BLOCK';
+    } else {
+      ai.update(dt, p2, p1);
+    }
+
+    // Update Fighters
+    p1.update(dt, p2, canvas.width, GameEngine);
+    p2.update(dt, p1, canvas.width, GameEngine);
+
+    // Update Projectiles
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+      const p = projectiles[i];
+      p.life -= dt;
+      if (p.type === 'blast') {
+        p.x += p.vx;
+        const target = p.owner === p1 ? p2 : p1;
+        const dist = Math.hypot(p.x - target.x, p.y - (target.y - target.height / 2));
+        if (dist < p.radius + 30) {
+          const isBlocking = target.state === 'BLOCK' && target.facing !== (p.vx > 0 ? 1 : -1);
+          target.takeDamage(p.damage * (isBlocking ? 0.2 : 1.0));
+          target.takeKnockback((p.vx > 0 ? 1 : -1) * 6, 0.2, false);
+          spawnHitSpark(p.x, p.y, p.color);
+          p.life = 0;
+        }
+      } else if (p.type === 'beam') {
+        p.length = Math.min(p.maxLength, p.length + dt * 2500);
+        const target = p.owner === p1 ? p2 : p1;
+        const inBeamX = p.dir > 0 ? (target.x > p.x && target.x < p.x + p.length) : (target.x < p.x && target.x > p.x - p.length);
+        if (inBeamX && Math.abs((target.y - target.height/2) - p.y) < p.height) {
+          const isBlocking = target.state === 'BLOCK';
+          target.takeDamage(p.damage * dt * 2.5 * (isBlocking ? 0.2 : 1.0));
+          target.takeKnockback(p.dir * 4, 0.3, true);
+          spawnHitSpark(target.x, p.y, p.color);
+        }
+      }
+      if (p.life <= 0 || p.x < 0 || p.x > canvas.width) {
+        projectiles.splice(i, 1);
+      }
+    }
+
+    // Update Particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const pt = particles[i];
+      pt.x += pt.vx;
+      pt.y += pt.vy;
+      pt.life -= dt;
+      if (pt.life <= 0) particles.splice(i, 1);
+    }
+
+    // Update HUD Bars
+    updateHUD();
+
+    // Check KO
+    if (p1.hp <= 0 || p2.hp <= 0) {
+      endMatch(p1.hp > 0 ? p1 : p2);
+    }
+  }
+
+  function updateHUD() {
+    // HP
+    const p1HpPct = (p1.hp / p1.maxHp) * 100;
+    const p2HpPct = (p2.hp / p2.maxHp) * 100;
+    document.getElementById('p1-hp').style.width = p1HpPct + '%';
+    document.getElementById('p2-hp').style.width = p2HpPct + '%';
+    document.getElementById('p1-hp-lag').style.width = p1HpPct + '%';
+    document.getElementById('p2-hp-lag').style.width = p2HpPct + '%';
+
+    // KI
+    document.getElementById('p1-ki').style.width = ((p1.ki / p1.maxKi) * 100) + '%';
+    document.getElementById('p2-ki').style.width = ((p2.ki / p2.maxKi) * 100) + '%';
+
+    // Form Indicators
+    document.getElementById('p1-form').innerText = p1.isTransformed ? p1.data.transName : 'BASE';
+    document.getElementById('p2-form').innerText = p2.isTransformed ? p2.data.transName : 'BASE';
+
+    // Transformation Prompt
+    const transPrompt = document.getElementById('trans-prompt');
+    if (p1.transMeter >= 100 && !p1.isTransformed) {
+      transPrompt.style.display = 'block';
+    } else {
+      transPrompt.style.display = 'none';
+    }
+
+    // Combo Counters
+    const c1 = document.getElementById('p1-combo');
+    if (p1.comboCount > 1) {
+      c1.style.display = 'block';
+      document.getElementById('p1-hits').innerText = p1.comboCount;
+      document.getElementById('p1-dmg').innerText = p1.comboDamage + ' DMG';
+    } else {
+      c1.style.display = 'none';
+    }
+
+    const c2 = document.getElementById('p2-combo');
+    if (p2.comboCount > 1) {
+      c2.style.display = 'block';
+      document.getElementById('p2-hits').innerText = p2.comboCount;
+      document.getElementById('p2-dmg').innerText = p2.comboDamage + ' DMG';
+    } else {
+      c2.style.display = 'none';
+    }
+  }
+
+  function endMatch(winner) {
+    isGameOver = true;
+    showAnnouncement('K.O. !');
+    setTimeout(() => {
+      document.getElementById('end-title').innerText = winner === p1 ? 'VICTORY!' : 'DEFEAT!';
+      document.getElementById('end-subtitle').innerText = `${winner.data.name} WINS THE BATTLE!`;
+      GameApp.openScreen('match-end-screen');
+    }, 1500);
+  }
+
+  function render() {
+    ctx.save();
+
+    // Screen Shake
+    if (screenShake > 0) {
+      const shakeX = (Math.random() - 0.5) * screenShake;
+      const shakeY = (Math.random() - 0.5) * screenShake;
+      ctx.translate(shakeX, shakeY);
+      screenShake *= 0.9;
+    }
+
+    // 1. Draw Arena Background
+    drawArenaBackground();
+
+    // 2. Draw Fighters
+    p1.draw(ctx);
+    p2.draw(ctx);
+
+    // 3. Draw Projectiles
+    drawProjectiles();
+
+    // 4. Draw Particles
+    drawParticles();
+
+    ctx.restore();
+  }
+
+  function drawArenaBackground() {
+    const w = canvas.width;
+    const h = canvas.height;
+    const groundY = canvas.height * 0.78;
+
+    // Sky Gradient
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, groundY);
+    skyGrad.addColorStop(0, currentArena.skyTop);
+    skyGrad.addColorStop(1, currentArena.skyBottom);
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, w, groundY);
+
+    // Distant Mountains / Architecture
+    ctx.fillStyle = currentArena.mountains || '#333';
+    ctx.beginPath();
+    ctx.moveTo(0, groundY);
+    for (let x = 0; x < w; x += 120) {
+      const mh = Math.sin(x * 0.01) * 80 + 120;
+      ctx.lineTo(x + 60, groundY - mh);
+      ctx.lineTo(x + 120, groundY);
+    }
+    ctx.fill();
+
+    // Ground
+    const groundGrad = ctx.createLinearGradient(0, groundY, 0, h);
+    groundGrad.addColorStop(0, currentArena.groundColor);
+    groundGrad.addColorStop(1, currentArena.groundAccent);
+    ctx.fillStyle = groundGrad;
+    ctx.fillRect(0, groundY, w, h - groundY);
+
+    // Ground Edge / Tile Lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, groundY);
+    ctx.lineTo(w, groundY);
+    ctx.stroke();
+  }
+
+  function drawProjectiles() {
+    for (const p of projectiles) {
+      ctx.save();
+      if (p.type === 'blast') {
+        ctx.fillStyle = p.color;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (p.type === 'beam') {
+        ctx.fillStyle = p.color;
+        ctx.shadowColor = '#fff';
+        ctx.shadowBlur = 20;
+        const beamX = p.dir > 0 ? p.x : p.x - p.length;
+        ctx.fillRect(beamX, p.y - p.height / 2, p.length, p.height);
+        // White Core
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(beamX, p.y - p.height / 4, p.length, p.height / 2);
+      }
+      ctx.restore();
+    }
+  }
+
+  function drawParticles() {
+    for (const pt of particles) {
+      ctx.save();
+      ctx.globalAlpha = pt.life / pt.maxLife;
+      ctx.fillStyle = pt.color;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // KEYBOARD & INPUT ENGINE
+  function setupInputs() {
+    const keys = {};
+
+    window.addEventListener('keydown', (e) => {
+      keys[e.key.toLowerCase()] = true;
+      if (!p1 || isGameOver) return;
+
+      if (e.key === 'Escape' || e.key.toLowerCase() === 'p') {
+        GameApp.togglePause();
+        return;
+      }
+
+      // Action mappings
+      if (e.key.toLowerCase() === 'j') p1.lightAttack();
+      if (e.key.toLowerCase() === 'k') p1.heavyAttack();
+      if (e.key.toLowerCase() === 'l') p1.kiBlast();
+      if (e.key.toLowerCase() === 'u') p1.specialMove();
+      if (e.key.toLowerCase() === 'i') p1.ultimateMove();
+      if (e.key.toLowerCase() === 't') p1.transform();
+      if (e.key === 'Shift' || e.key.toLowerCase() === 'o') p1.dash(p1.facing);
+      if (e.key.toLowerCase() === 'w' || e.key === 'ArrowUp') p1.jump();
+    });
+
+    window.addEventListener('keyup', (e) => {
+      keys[e.key.toLowerCase()] = false;
+    });
+
+    // Continuous movement checks
+    setInterval(() => {
+      if (!p1 || isPaused || isGameOver) return;
+
+      // Charge Ki
+      if (keys[' '] || keys['c']) {
+        p1.state = 'CHARGE';
+      } else if (p1.state === 'CHARGE') {
+        p1.state = 'IDLE';
+      }
+
+      // Crouch / Guard
+      if (keys['s'] || keys['arrowdown']) {
+        p1.state = 'BLOCK';
+      } else if (p1.state === 'BLOCK' && !keys['s'] && !keys['arrowdown']) {
+        p1.state = 'IDLE';
+      }
+
+      // Left / Right Walk
+      if (p1.canAct()) {
+        if (keys['a'] || keys['arrowleft']) {
+          p1.vx = -p1.speedMult;
+        } else if (keys['d'] || keys['arrowright']) {
+          p1.vx = p1.speedMult;
+        } else if (p1.state !== 'DASH') {
+          p1.vx = 0;
+        }
+      }
+    }, 1000 / 60);
+
+    // Touch Controller Handling
+    setupTouchControls();
+  }
+
+  function setupTouchControls() {
+    const touchZone = document.getElementById('touch-dpad');
+    const thumb = document.getElementById('touch-thumb');
+    let touchId = null;
+
+    function handleTouch(e) {
+      const touch = Array.from(e.touches).find(t => t.identifier === touchId) || e.touches[0];
+      if (!touch || !p1) return;
+      const rect = touchZone.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = touch.clientX - cx;
+      const dy = touch.clientY - cy;
+      const dist = Math.min(50, Math.hypot(dx, dy));
+      const angle = Math.atan2(dy, dx);
+
+      thumb.style.transform = `translate(calc(-50% + ${Math.cos(angle)*dist}px), calc(-50% + ${Math.sin(angle)*dist}px))`;
+
+      if (dx > 25) p1.vx = p1.speedMult;
+      else if (dx < -25) p1.vx = -p1.speedMult;
+      else p1.vx = 0;
+
+      if (dy < -35) p1.jump();
+      if (dy > 35) p1.state = 'BLOCK';
+    }
+
+    touchZone.addEventListener('touchstart', (e) => {
+      touchId = e.changedTouches[0].identifier;
+      handleTouch(e);
+    });
+    touchZone.addEventListener('touchmove', handleTouch);
+    touchZone.addEventListener('touchend', () => {
+      thumb.style.transform = 'translate(-50%, -50%)';
+      if (p1) { p1.vx = 0; if (p1.state === 'BLOCK') p1.state = 'IDLE'; }
+    });
+
+    // Touch Action Buttons
+    document.querySelectorAll('.t-btn').forEach(btn => {
+      const act = btn.getAttribute('data-key');
+      btn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (!p1) return;
+        if (act === 'Light') p1.lightAttack();
+        if (act === 'Heavy') p1.heavyAttack();
+        if (act === 'Blast') p1.kiBlast();
+        if (act === 'Special') p1.specialMove();
+        if (act === 'Ult') p1.ultimateMove();
+        if (act === 'Trans') p1.transform();
+        if (act === 'Dash') p1.dash(p1.facing);
+        if (act === 'Charge') p1.state = 'CHARGE';
+      });
+      btn.addEventListener('touchend', () => {
+        if (act === 'Charge' && p1 && p1.state === 'CHARGE') p1.state = 'IDLE';
+      });
+    });
+
+    // Auto-detect mobile devices
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+      document.getElementById('touch-controls').style.display = 'block';
+    }
+  }
+
+  return {
+    init,
+    startMatch,
+    spawnHitSpark,
+    spawnChargeParticles,
+    spawnKiBlast,
+    spawnBeam,
+    triggerScreenShake,
+    triggerHitStop,
+    togglePause: () => {
+      isPaused = !isPaused;
+      document.getElementById('pause-screen').classList.toggle('hidden', !isPaused);
+    },
+    resume: () => {
+      isPaused = false;
+      document.getElementById('pause-screen').classList.add('hidden');
+    }
+  };
+})();
+
+/**
+ * GAME APP UI MANAGER
+ */
+const GameApp = (() => {
+  let selectedP1 = 'goku';
+  let selectedP2 = 'vegeta';
+  let selectedArena = 'wasteland';
+  let activeMode = 'arcade';
+
+  function init() {
+    GameEngine.init();
+    buildRosterUI();
+    buildStageUI();
+    buildLoreUI();
+  }
+
+  function openScreen(screenId) {
+    document.querySelectorAll('.overlay-screen').forEach(s => s.classList.add('hidden'));
+    document.getElementById(screenId).classList.remove('hidden');
+    if (screenId === 'main-menu') {
+      document.getElementById('hud-layer').style.display = 'none';
+      AudioSys.stopBgm();
+    }
+  }
+
+  function openModeSelect(mode) {
+    activeMode = mode;
+    openScreen('char-select-screen');
+  }
+
+  function buildRosterUI() {
+    const grid = document.getElementById('roster-grid');
+    grid.innerHTML = '';
+
+    Object.values(CHARACTERS).forEach((char, idx) => {
+      const card = document.createElement('div');
+      card.className = `char-card ${char.id === selectedP1 ? 'selected-p1' : ''}`;
+      card.innerHTML = `
+        <div class="avatar" style="background:${char.color};">${char.avatar}</div>
+        <div class="name">${char.name}</div>
+      `;
+      card.onclick = () => {
+        selectedP1 = char.id;
+        // Pick random opponent or different one
+        const charKeys = Object.keys(CHARACTERS);
+        selectedP2 = charKeys[(idx + 1) % charKeys.length];
+        updateSelectPreview();
+      };
+      grid.appendChild(card);
+    });
+    updateSelectPreview();
+  }
+
+  function buildStageUI() {
+    const list = document.getElementById('stage-list');
+    list.innerHTML = '';
+    ARENAS.forEach(stage => {
+      const thumb = document.createElement('div');
+      thumb.className = `stage-thumb ${stage.id === selectedArena ? 'selected' : ''}`;
+      thumb.style.background = `linear-gradient(135deg, ${stage.skyTop}, ${stage.groundColor})`;
+      thumb.innerText = stage.name;
+      thumb.onclick = () => {
+        selectedArena = stage.id;
+        document.querySelectorAll('.stage-thumb').forEach(t => t.classList.remove('selected'));
+        thumb.classList.add('selected');
+      };
+      list.appendChild(thumb);
+    });
+  }
+
+  function buildLoreUI() {
+    const lore = document.getElementById('lore-content');
+    lore.innerHTML = Object.values(CHARACTERS).map(c => `
+      <div style="margin-bottom:15px; background:rgba(255,255,255,0.05); padding:10px; border-radius:6px;">
+        <h3 style="color:var(--gold); font-size:1.1rem;">${c.avatar} ${c.name} - <i>${c.title}</i></h3>
+        <p style="color:#ccc; margin-top:4px;">${c.lore}</p>
+        <p style="color:var(--blue); font-size:0.8rem; margin-top:4px;">Special: <b>${c.specialName}</b> | Ultimate: <b>${c.ultimateName}</b></p>
+      </div>
+    `).join('');
+  }
+
+  function updateSelectPreview() {
+    const c1 = CHARACTERS[selectedP1];
+    const c2 = CHARACTERS[selectedP2];
+
+    // P1
+    document.getElementById('p1-preview-icon').innerText = c1.avatar;
+    document.getElementById('p1-prev-name').innerText = c1.name;
+    document.getElementById('p1-prev-form').innerText = `${c1.title} / ${c1.transName}`;
+    document.getElementById('p1-stat-spd').style.width = (c1.stats.speed * 10) + '%';
+    document.getElementById('p1-stat-pwr').style.width = (c1.stats.power * 80) + '%';
+    document.getElementById('p1-stat-ki').style.width = (c1.stats.maxKi * 0.8) + '%';
+
+    // P2
+    document.getElementById('p2-preview-icon').innerText = c2.avatar;
+    document.getElementById('p2-prev-name').innerText = c2.name;
+    document.getElementById('p2-prev-form').innerText = `${c2.title} / ${c2.transName}`;
+    document.getElementById('p2-stat-spd').style.width = (c2.stats.speed * 10) + '%';
+    document.getElementById('p2-stat-pwr').style.width = (c2.stats.power * 80) + '%';
+    document.getElementById('p2-stat-ki').style.width = (c2.stats.maxKi * 0.8) + '%';
+
+    document.querySelectorAll('.char-card').forEach(card => {
+      const name = card.querySelector('.name').innerText;
+      card.classList.toggle('selected-p1', name.toUpperCase() === c1.name.toUpperCase());
+    });
+  }
+
+  function startMatchFromSelect() {
+    const diff = document.getElementById('ai-difficulty-select').value;
+    document.querySelectorAll('.overlay-screen').forEach(s => s.classList.add('hidden'));
+    GameEngine.startMatch(selectedP1, selectedP2, selectedArena, diff, activeMode);
+  }
+
+  function restartCurrentMatch() {
+    startMatchFromSelect();
+  }
+
+  function toggleTouchOverlay(show) {
+    document.getElementById('touch-controls').style.display = show ? 'block' : 'none';
+  }
+
+  return {
+    init,
+    openScreen,
+    openModeSelect,
+    startMatchFromSelect,
+    restartCurrentMatch,
+    togglePause: GameEngine.togglePause,
+    resumeGame: GameEngine.resume,
+    toggleTouchOverlay
+  };
+})();
+
+// Start game app on window load
+window.addEventListener('load', () => {
+  GameApp.init();
+});
+</script>
+</body>
+</html>
