@@ -1,1 +1,1 @@
-# Dragon-Ball-game-made-by-mimo-2.6-pro
+# I know the game isn't that beautiful or high-quality, but I based it on a model. mimo v2.6 pro In visual identity and the UI While I built the UX Regarding character animation design, if you have any feedback that could be helpful, please let me know via my Gmail address.
